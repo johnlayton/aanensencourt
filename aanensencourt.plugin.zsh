@@ -22,22 +22,37 @@ function _sonar {
   cmds=(
     'help:Usage information'
     'init:Initialisation information'
+    'complexity:Display list of most complexity'
+    'bug:Display a list of bugs'
+    'smell:Display a list of smells'
   )
 
   if (( CURRENT == 2 )); then
     _describe 'command' cmds
   elif (( CURRENT == 3 )); then
     case "$words[2]" in
-      teams) subcmds=(
-        'list:List all the teams'
-        )
+      bug) subcmds=(
+        'BLOCKER:List all blockers'
+        'CRITICAL:List all critical'
+        'MAJOR:List all major'
+        'MINOR:List all minor'
+        'INFO:List all info'
+        ) ;;
+      smell) subcmds=(
+        'BLOCKER:List all blockers'
+        'CRITICAL:List all critical'
+        'MAJOR:List all major'
+        'MINOR:List all minor'
+        'INFO:List all info'
+        ) ;;
     esac
+    _describe 'command' subcmds
   fi
 
   return 0
 }
 
-compdef _sonar sonar    
+compdef _sonar sonar
 
 function _sonar::help {
     cat <<EOF
@@ -47,6 +62,7 @@ Available commands:
 
   complexity
   bug
+  smell
 
 EOF
 }
@@ -83,16 +99,31 @@ function _sonar::complexity () {
 }
 
 function _sonar::bug () {
-  local CODE=${1:-""}
+#  local CODE=${1:-""}
+  local SEVERITY=${1:-""}
 
-  if [[ -z "${CODE}" ]]; then
-    local BUGS=("servlet" "equals" "optional")
-    PS3='Select an bug type and press enter: '
-    select BUG in "${BUGS[@]}"; do
-      case "$BUG,$REPLY" in
-        servlets,*|*,servlets) CODE=2226; break ;;
-        equals,*|*,equals)     CODE=1206; break ;;
-        optional,*|*,optional) CODE=3655; break ;;
+#  if [[ -z "${CODE}" ]]; then
+#    local BUGS=("servlet" "equals" "optional")
+#    PS3='Select an bug type and press enter: '
+#    select BUG in "${BUGS[@]}"; do
+#      case "$BUG,$REPLY" in
+#        servlets,*|*,servlets) CODE=2226; break ;;
+#        equals,*|*,equals)     CODE=1206; break ;;
+#        optional,*|*,optional) CODE=3655; break ;;
+#      esac
+#    done
+#  fi
+
+  if [[ -z "${SEVERITY}" ]]; then
+    local LEVELS=("Blocker" "Critical" "Major" "Minor" "Info")
+    PS3='Select an severity and press enter: '
+    select LEVEL in "${LEVELS[@]}"; do
+      case "$LEVEL,$REPLY" in
+        Blocker,*|*,Blocker) SEVERITY="BLOCKER"; break ;;
+        Critical,*|*,Critical) SEVERITY="CRITICAL"; break ;;
+        Major,*|*,Major) SEVERITY="MAJOR"; break ;;
+        Minor,*|*,Minor) SEVERITY="MINOR"; break ;;
+        Info,*|*,Info) SEVERITY="INFO"; break ;;
       esac
     done
   fi
@@ -101,7 +132,7 @@ function _sonar::bug () {
     xargs -I {} -n1 -P1 \
       curl --silent \
            --location --user ${SONAR_TOKEN}: \
-           --request GET "${SONAR_API_ENDPOINT}/api/issues/search?p={}&ps=100&resolved=false&rules=java%3AS${CODE}&types=BUG&additionalFields=_all" | \
+           --request GET "${SONAR_API_ENDPOINT}/api/issues/search?p={}&ps=100&resolved=false&languages=java&types=BUG&severities=${SEVERITY}&additionalFields=_all" | \
     jq -r .issues | \
     jq -cn --stream 'fromstream(1|truncate_stream(inputs))' | \
     jq -r "{ component : .component, message : .message }" | \
