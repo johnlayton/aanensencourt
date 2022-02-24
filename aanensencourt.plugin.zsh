@@ -1,8 +1,5 @@
 #!/usr/bin/env zsh
 
-export SONAR_TOKEN
-export SONAR_API_ENDPOINT
-
 function sonar () {
   [[ $# -gt 0 ]] || {
     _sonar::help
