@@ -136,7 +136,51 @@ function _sonar::bug () {
     jq -r .issues | \
     jq -cn --stream 'fromstream(1|truncate_stream(inputs))' | \
     jq -r "{ component : .component, message : .message }" | \
-    jq -r '{ component : .component | gsub(".*/"; ""), message : .message }' | \
+    jq -r '{ component : .component | gsub(".*/"; ""), message : .message | gsub(","; "")}' | \
+    jq --slurp | \
+    jq -r '(["Component", "Message"] | (., map(length*"-"))), (.[] | [.component, .message]) | @csv' | \
+    column -t -s ,
+}
+
+function _sonar::smell () {
+#  local CODE=${1:-""}
+  local SEVERITY=${1:-""}
+
+#  if [[ -z "${CODE}" ]]; then
+#    local BUGS=("servlet" "equals" "optional")
+#    PS3='Select an bug type and press enter: '
+#    select BUG in "${BUGS[@]}"; do
+#      case "$BUG,$REPLY" in
+#        servlets,*|*,servlets) CODE=2226; break ;;
+#        equals,*|*,equals)     CODE=1206; break ;;
+#        optional,*|*,optional) CODE=3655; break ;;
+#      esac
+#    done
+#  fi
+
+  if [[ -z "${SEVERITY}" ]]; then
+    local LEVELS=("Blocker" "Critical" "Major" "Minor" "Info")
+    PS3='Select an severity and press enter: '
+    select LEVEL in "${LEVELS[@]}"; do
+      case "$LEVEL,$REPLY" in
+        Blocker,*|*,Blocker) SEVERITY="BLOCKER"; break ;;
+        Critical,*|*,Critical) SEVERITY="CRITICAL"; break ;;
+        Major,*|*,Major) SEVERITY="MAJOR"; break ;;
+        Minor,*|*,Minor) SEVERITY="MINOR"; break ;;
+        Info,*|*,Info) SEVERITY="INFO"; break ;;
+      esac
+    done
+  fi
+
+  seq 1 1 14 | \
+    xargs -I {} -n1 -P1 \
+      curl --silent \
+           --location --user ${SONAR_TOKEN}: \
+           --request GET "${SONAR_API_ENDPOINT}/api/issues/search?p={}&ps=100&resolved=false&languages=java&types=CODE_SMELL&severities=${SEVERITY}&additionalFields=_all" | \
+    jq -r .issues | \
+    jq -cn --stream 'fromstream(1|truncate_stream(inputs))' | \
+    jq -r "{ component : .component, message : .message }" | \
+    jq -r '{ component : .component | gsub(".*/"; ""), message : .message | gsub(","; "")}' | \
     jq --slurp | \
     jq -r '(["Component", "Message"] | (., map(length*"-"))), (.[] | [.component, .message]) | @csv' | \
     column -t -s ,
