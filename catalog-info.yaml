@@ -1,0 +1,18 @@
+# nonk8s
+# $schema:https://json.schemastore.org/catalog-info.json
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aanensencourt
+  title: aanensencourt
+  annotations:
+    github.com/project-slug: johnlayton/aanensencourt
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://backstage.io/
+      title: Backstage
+      icon: docs
+spec:
+  type: website
+  owner: knowledge
+  lifecycle: production
